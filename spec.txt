@@ -1,0 +1,33 @@
+token eq = "="
+token or = "|"
+token al = "<"
+token ar = ">"
+token ell = "..."
+token newline = "\n"
+token ident
+token string
+
+unit = unit-token | ident
+unit-token = ident al string ar
+
+unit-ell = unit-ell-full | unit
+unit-ell-full = unit ell
+
+expr-and = unit-ell...
+
+expr-or = unit or unit expr-or-ext...
+expr-or-ext = or unit
+
+expr = expr-or | expr-and
+
+statement-expr = ident eq expr newline
+
+statement-token = statement-token-expanded | statement-token-basic
+statement-token-basic = ident<"token"> ident newline
+statement-token-expanded = ident<"token"> ident eq string newline
+
+statement-empty = newline
+
+statement = statement-token | statement-expr | statement-empty
+
+statements = statement...
