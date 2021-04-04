@@ -20,14 +20,18 @@ func handleUnit(u parser.NodeUnit) (name string, tag string) {
 	panic("invalid tree for unit")
 }
 
-func handleUnitEll(u parser.NodeUnitEll) (name string, tag string, ell bool) {
+func handleUnitEll(u parser.NodeUnitEll) (name string, tag string, suffix string) {
 	if unit, ok := u.I.(parser.NodeUnit); ok {
 		name, tag := handleUnit(unit)
-		return name, tag, false
+		return name, tag, ""
 	}
 	if unitFull, ok := u.I.(parser.NodeUnitEllFull); ok {
 		name, tag := handleUnit(unitFull.I0)
-		return name, tag, true
+		return name, tag, "ell"
+	}
+	if unitFull, ok := u.I.(parser.NodeUnitEllOpt); ok {
+		name, tag := handleUnit(unitFull.I0)
+		return name, tag, "opt"
 	}
 	panic("invalid tree for unit-ell")
 }
@@ -49,12 +53,7 @@ func generateAll(ns parser.NodeStatements) (string, error) {
 	symbols := make(map[string]string)
 	for _, statement := range statements {
 		if token, ok := statement.I.(parser.NodeStatementToken); ok {
-			if t, ok := token.I.(parser.NodeStatementTokenBasic); ok {
-				symbols[t.I1.Data] = "token"
-			}
-			if t, ok := token.I.(parser.NodeStatementTokenExpanded); ok {
-				symbols[t.I1.Data] = "token"
-			}
+			symbols[token.I1.Data] = "token"
 		}
 		if expr, ok := statement.I.(parser.NodeStatementExpr); ok {
 			symbols[expr.I0.Data] = "expr"
@@ -125,9 +124,9 @@ func generateAnd(name string, expr parser.NodeExprAnd, symbols map[string]string
 	methodStr := ""
 	i := 0
 	for _, unitell := range units {
-		identName, identTag, hasEll := handleUnitEll(unitell)
+		identName, identTag, suffix := handleUnitEll(unitell)
 
-		if !hasEll {
+		if suffix == "" {
 			if symbols[identName] == "token" {
 				fieldsStr += fmt.Sprintf("\tI%v Token // %s\n", i, identName)
 				if identTag == "" {
@@ -160,7 +159,37 @@ func generateAnd(name string, expr parser.NodeExprAnd, symbols map[string]string
 			} else {
 				return "", fmt.Errorf("unknown identifier: %s", identName)
 			}
-		} else {
+		} else if suffix == "opt" {
+			if symbols[identName] == "token" {
+				fieldsStr += fmt.Sprintf("\tI%v *Token // %s\n", i, identName)
+				if identTag == "" {
+					methodStr += fmt.Sprintf(`
+	if len(in) > curr && in[curr].Type == "%s" {
+		out.I%v = &Token{Type: in[curr].Type, Data: Type: in[curr].Data, Line: in[curr].Line}
+		curr++
+	}
+	`, identName, i)
+				} else {
+					methodStr += fmt.Sprintf(`
+	if len(in) > curr && in[curr].Type == "%s" && in[curr].Data == "%s" {
+		out.I%v = &Token{Type: in[curr].Type, Data: Type: in[curr].Data, Line: in[curr].Line}
+		curr++
+	}
+	`, identName, identTag, i)
+				}
+			} else if symbols[identName] == "expr" {
+				fieldsStr += fmt.Sprintf("\tI%v *Node%s\n", i, transform(identName))
+				methodStr += fmt.Sprintf(`
+	node%v, currChange, err := Parse%s(in[curr:])
+	if err == nil {
+		out.I%v = &node%v
+		curr += currChange
+	}
+				`, i, transform(identName), i, i)
+			} else {
+				return "", fmt.Errorf("unknown identifier: %s", identName)
+			}
+		} else if suffix == "ell" {
 			methodStr += `
 	for {`
 			if symbols[identName] == "token" {

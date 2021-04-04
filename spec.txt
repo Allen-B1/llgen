@@ -3,6 +3,7 @@ token or = "|"
 token al = "<"
 token ar = ">"
 token ell = "..."
+token opt = "?"
 token newline = "\n"
 token ident
 token string
@@ -10,8 +11,9 @@ token string
 unit = unit-token | ident
 unit-token = ident al string ar
 
-unit-ell = unit-ell-full | unit
+unit-ell = unit-ell-full | unit-ell-opt | unit 
 unit-ell-full = unit ell
+unit-ell-opt = unit opt
 
 expr-and = unit-ell...
 
@@ -22,9 +24,8 @@ expr = expr-or | expr-and
 
 statement-expr = ident eq expr newline
 
-statement-token = statement-token-expanded | statement-token-basic
-statement-token-basic = ident<"token"> ident newline
-statement-token-expanded = ident<"token"> ident eq string newline
+statement-token = ident<"token"> ident statement-token-annotation? newline
+statement-token-annotation = eq string
 
 statement-empty = newline
 

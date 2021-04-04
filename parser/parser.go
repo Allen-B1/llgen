@@ -106,6 +106,10 @@ func ParseUnitEll(in []Token) (NodeUnitEll, int, error) {
 		return NodeUnitEll{node}, curr, nil
 	}
 		
+	if node, curr, err := ParseUnitEllOpt(in); err == nil {
+		return NodeUnitEll{node}, curr, nil
+	}
+		
 	if node, curr, err := ParseUnit(in); err == nil {
 		return NodeUnitEll{node}, curr, nil
 	}
@@ -132,6 +136,32 @@ func ParseUnitEllFull(in []Token) (NodeUnitEllFull, int, error) {
 				
 	if len(in) <= curr || in[curr].Type != "ell" {
 		return NodeUnitEllFull{}, 0, newError("failed to parse unit-ell-full: ell expected", getLineOr0(in, curr))
+	}
+	out.I1 = in[curr]
+	curr++
+	
+	return out, curr, nil
+}
+
+type NodeUnitEllOpt struct {
+	I0 NodeUnit
+	I1 Token // opt
+
+}
+
+func ParseUnitEllOpt(in []Token) (NodeUnitEllOpt, int, error) {
+	var out NodeUnitEllOpt
+	curr := 0
+
+	node0, currChange, err := ParseUnit(in[curr:])
+	if err != nil {
+		return NodeUnitEllOpt{}, 0, wrap(err, "failed to parse unit-ell-opt")
+	}
+	out.I0 = node0
+	curr += currChange
+				
+	if len(in) <= curr || in[curr].Type != "opt" {
+		return NodeUnitEllOpt{}, 0, newError("failed to parse unit-ell-opt: opt expected", getLineOr0(in, curr))
 	}
 	out.I1 = in[curr]
 	curr++
@@ -287,94 +317,64 @@ func ParseStatementExpr(in []Token) (NodeStatementExpr, int, error) {
 }
 
 type NodeStatementToken struct {
-	I interface{}
+	I0 Token // ident
+	I1 Token // ident
+	I2 *NodeStatementTokenAnnotation
+	I3 Token // newline
+
 }
 
 func ParseStatementToken(in []Token) (NodeStatementToken, int, error) {
-	if node, curr, err := ParseStatementTokenExpanded(in); err == nil {
-		return NodeStatementToken{node}, curr, nil
-	}
-		
-	if node, curr, err := ParseStatementTokenBasic(in); err == nil {
-		return NodeStatementToken{node}, curr, nil
-	}
-		
-	return NodeStatementToken{nil}, 0, newError("failed to parse statement-token", getLineOr0(in, 0))
-}
-
-type NodeStatementTokenBasic struct {
-	I0 Token // ident
-	I1 Token // ident
-	I2 Token // newline
-
-}
-
-func ParseStatementTokenBasic(in []Token) (NodeStatementTokenBasic, int, error) {
-	var out NodeStatementTokenBasic
+	var out NodeStatementToken
 	curr := 0
 
 	if len(in) <= curr || in[curr].Type != "ident" || in[curr].Data != "token" {
-		return NodeStatementTokenBasic{}, 0, newError("failed to parse statement-token-basic: ident expected", getLineOr0(in, curr))
+		return NodeStatementToken{}, 0, newError("failed to parse statement-token: ident expected", getLineOr0(in, curr))
 	}
 	out.I0 = in[curr]
 	curr++
 	
 	if len(in) <= curr || in[curr].Type != "ident" {
-		return NodeStatementTokenBasic{}, 0, newError("failed to parse statement-token-basic: ident expected", getLineOr0(in, curr))
+		return NodeStatementToken{}, 0, newError("failed to parse statement-token: ident expected", getLineOr0(in, curr))
 	}
 	out.I1 = in[curr]
 	curr++
 	
-	if len(in) <= curr || in[curr].Type != "newline" {
-		return NodeStatementTokenBasic{}, 0, newError("failed to parse statement-token-basic: newline expected", getLineOr0(in, curr))
+	node2, currChange, err := ParseStatementTokenAnnotation(in[curr:])
+	if err == nil {
+		out.I2 = &node2
+		curr += currChange
 	}
-	out.I2 = in[curr]
+				
+	if len(in) <= curr || in[curr].Type != "newline" {
+		return NodeStatementToken{}, 0, newError("failed to parse statement-token: newline expected", getLineOr0(in, curr))
+	}
+	out.I3 = in[curr]
 	curr++
 	
 	return out, curr, nil
 }
 
-type NodeStatementTokenExpanded struct {
-	I0 Token // ident
-	I1 Token // ident
-	I2 Token // eq
-	I3 Token // string
-	I4 Token // newline
+type NodeStatementTokenAnnotation struct {
+	I0 Token // eq
+	I1 Token // string
 
 }
 
-func ParseStatementTokenExpanded(in []Token) (NodeStatementTokenExpanded, int, error) {
-	var out NodeStatementTokenExpanded
+func ParseStatementTokenAnnotation(in []Token) (NodeStatementTokenAnnotation, int, error) {
+	var out NodeStatementTokenAnnotation
 	curr := 0
 
-	if len(in) <= curr || in[curr].Type != "ident" || in[curr].Data != "token" {
-		return NodeStatementTokenExpanded{}, 0, newError("failed to parse statement-token-expanded: ident expected", getLineOr0(in, curr))
+	if len(in) <= curr || in[curr].Type != "eq" {
+		return NodeStatementTokenAnnotation{}, 0, newError("failed to parse statement-token-annotation: eq expected", getLineOr0(in, curr))
 	}
 	out.I0 = in[curr]
 	curr++
 	
-	if len(in) <= curr || in[curr].Type != "ident" {
-		return NodeStatementTokenExpanded{}, 0, newError("failed to parse statement-token-expanded: ident expected", getLineOr0(in, curr))
+	if len(in) <= curr || in[curr].Type != "string" {
+		return NodeStatementTokenAnnotation{}, 0, newError("failed to parse statement-token-annotation: string expected", getLineOr0(in, curr))
 	}
 	out.I1 = in[curr]
-	curr++
-	
-	if len(in) <= curr || in[curr].Type != "eq" {
-		return NodeStatementTokenExpanded{}, 0, newError("failed to parse statement-token-expanded: eq expected", getLineOr0(in, curr))
-	}
-	out.I2 = in[curr]
-	curr++
-	
-	if len(in) <= curr || in[curr].Type != "string" {
-		return NodeStatementTokenExpanded{}, 0, newError("failed to parse statement-token-expanded: string expected", getLineOr0(in, curr))
-	}
-	out.I3 = in[curr]
-	curr++
-	
-	if len(in) <= curr || in[curr].Type != "newline" {
-		return NodeStatementTokenExpanded{}, 0, newError("failed to parse statement-token-expanded: newline expected", getLineOr0(in, curr))
-	}
-	out.I4 = in[curr]
 	curr++
 	
 	return out, curr, nil

@@ -40,6 +40,12 @@ func tokenize(in string) ([]parser.Token, error) {
 			i += 1
 			continue
 		}
+		if in[i] == '?' {
+			out = append(out, parser.Token{"opt", "?", line})
+			line += 1
+			i += 1
+			continue
+		}
 		if unicode.IsLetter(rune(in[i])) {
 			end := i
 			for end < len(in) && (unicode.IsLetter(rune(in[end])) || unicode.IsNumber(rune(in[end])) || in[end] == '-') {
