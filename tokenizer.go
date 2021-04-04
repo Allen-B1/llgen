@@ -56,10 +56,10 @@ func tokenize(in string) ([]parser.Token, error) {
 		}
 		if in[i] == '"' {
 			end := i + 1
-			for end < len(in) && in[end] != '"' {
+			for end < len(in) && (in[end] != '"' || in[end-1] == '\\') {
 				end += 1
 			}
-			out = append(out, parser.Token{"string", in[i+1 : end], line})
+			out = append(out, parser.Token{"string", strings.NewReplacer("\\n", "\n", "\\\"", "\"").Replace(in[i+1 : end]), line})
 			i = end + 1
 			continue
 		}
