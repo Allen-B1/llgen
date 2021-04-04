@@ -42,7 +42,6 @@ func tokenize(in string) ([]parser.Token, error) {
 		}
 		if in[i] == '?' {
 			out = append(out, parser.Token{"opt", "?", line})
-			line += 1
 			i += 1
 			continue
 		}
